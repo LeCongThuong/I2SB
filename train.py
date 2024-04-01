@@ -63,7 +63,7 @@ def create_training_options():
     parser.add_argument("--beta-max",       type=float, default=0.3,         help="max diffusion for the diffusion model")
     # parser.add_argument("--beta-min",       type=float, default=0.1)
     parser.add_argument("--ot-ode",         action="store_true",             help="use OT-ODE model")
-    parser.add_argument("--clip-denoise",   action="store_true",             help="clamp predicted image to [-1,1] at each")
+    parser.add_argument("--clip-denoise",   action="store_false",             help="clamp predicted image to [-1,1] at each")
 
     # optional configs for conditional network
     parser.add_argument("--cond-x1",        action="store_false",             help="conditional the network on degraded images")
@@ -176,3 +176,6 @@ if __name__ == '__main__':
         opt.local_rank = 0
         opt.global_size = 1
         init_processes(0, opt.n_gpu_per_node, main, opt)
+
+
+# python train.py --name test_i2sb --n-gpu-per-node 1 --corrupt "mixture" --dataset-dir "/mnt/hmi/thuong/wb_train_val_test_dataset/" --batch-size 16 --microbatch 1 --log-dir "logs" --log_writer "tensorboard" 

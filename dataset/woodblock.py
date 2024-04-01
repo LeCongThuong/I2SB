@@ -1,6 +1,5 @@
 import os
 import cv2
-import pydicom
 import numpy as np
 
 from PIL import Image
@@ -23,7 +22,7 @@ class WoodblockDataset(Dataset):
         super().__init__()
         self.dataset_dir = Path(opt.dataset_dir) / ('train' if train else 'valid')
         self.print_dir = self.dataset_dir / 'print_512'
-        self.depth_dir = self.dataset_dir / 'np_512'
+        self.depth_dir = self.dataset_dir / 'np_depth_512'
 
         self.print_img_path_list = list(Path(self.print_dir).glob("*.png"))
         self.depth_img_path_list = [Path(os.path.join(self.depth_dir, print_img_path.stem + ".npy")) for print_img_path in self.print_img_path_list]        
@@ -67,6 +66,6 @@ class WoodblockDataset(Dataset):
         t_print = self.preprocess_image(print_path)
         t_depth = self.preprocess_depth(depth_path)
         
-        mask = t_depth != np.max(t_depth)
+        mask = t_depth != torch.max(t_depth)
 
         return t_depth, t_print, mask
