@@ -20,10 +20,11 @@ import numpy as np
 import torch
 from torch.multiprocessing import Process
 
+
 from logger import Logger
 from distributed_util import init_processes
 from corruption import build_corruption
-from dataset import imagenet
+from dataset.woodblock import WoodblockDataset
 from i2sb import Runner, download_ckpt
 
 import colored_traceback.always
@@ -54,8 +55,8 @@ def create_training_options():
     # parser.add_argument("--amp",            action="store_true")
 
     # --------------- SB model ---------------
-    parser.add_argument("--image-size",     type=int,   default=256)
-    parser.add_argument("--corrupt",        type=str,   default=None,        help="restoration task")
+    parser.add_argument("--image-size",     type=int,   default=512)
+    parser.add_argument("--corrupt",        type=str,   default="mixture",   help="restoration task")
     parser.add_argument("--t0",             type=float, default=1e-4,        help="sigma start time in network parametrization")
     parser.add_argument("--T",              type=float, default=1.,          help="sigma end time in network parametrization")
     parser.add_argument("--interval",       type=int,   default=1000,        help="number of interval")
@@ -65,7 +66,7 @@ def create_training_options():
     parser.add_argument("--clip-denoise",   action="store_true",             help="clamp predicted image to [-1,1] at each")
 
     # optional configs for conditional network
-    parser.add_argument("--cond-x1",        action="store_true",             help="conditional the network on degraded images")
+    parser.add_argument("--cond-x1",        action="store_false",             help="conditional the network on degraded images")
     parser.add_argument("--add-x1-noise",   action="store_true",             help="add noise to conditional network")
 
     # --------------- optimizer and loss ---------------
@@ -126,15 +127,15 @@ def main(opt):
     if opt.seed is not None:
         set_seed(opt.seed + opt.global_rank)
 
-    # build imagenet dataset
-    train_dataset = imagenet.build_lmdb_dataset(opt, log, train=True)
-    val_dataset   = imagenet.build_lmdb_dataset(opt, log, train=False)
+    # build imagenet dataset # need to rewrite dataset
+    train_dataset = WoodblockDataset(opt, log, train=True)
+    val_dataset   = WoodblockDataset(opt, log, train=False)
     # note: images should be normalized to [-1,1] for corruption methods to work properly
 
-    if opt.corrupt == "mixture":
-        import corruption.mixture as mix
-        train_dataset = mix.MixtureCorruptDatasetTrain(opt, train_dataset)
-        val_dataset = mix.MixtureCorruptDatasetVal(opt, val_dataset)
+    # if opt.corrupt == "mixture":
+    #     import corruption.mixture as mix
+    #     train_dataset = mix.MixtureCorruptDatasetTrain(opt, train_dataset)
+    #     val_dataset = mix.MixtureCorruptDatasetVal(opt, val_dataset)
 
     # build corruption method
     corrupt_method = build_corruption(opt, log)

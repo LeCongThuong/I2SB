@@ -114,8 +114,8 @@ class Runner(object):
 
     def sample_batch(self, opt, loader, corrupt_method):
         if opt.corrupt == "mixture":
-            clean_img, corrupt_img, y = next(loader)
-            mask = None
+            clean_img, corrupt_img, mask = next(loader)
+            # mask = None
         elif "inpaint" in opt.corrupt:
             clean_img, y = next(loader)
             with torch.no_grad():
@@ -131,20 +131,18 @@ class Runner(object):
         # tu.save_image((corrupt_img+1)/2, ".debug/corrupt.png", nrow=4)
         # debug()
 
-        y  = y.detach().to(opt.device)
+        mask  = mask.detach().to(opt.device)
         x0 = clean_img.detach().to(opt.device)
         x1 = corrupt_img.detach().to(opt.device)
-        if mask is not None:
-            mask = mask.detach().to(opt.device)
-            x1 = (1. - mask) * x1 + mask * torch.randn_like(x1)
-        cond = x1.detach() if opt.cond_x1 else None
+        
+        cond = x1.detach().to(opt.device) if opt.cond_x1 else None
 
         if opt.add_x1_noise: # only for decolor
             x1 = x1 + torch.randn_like(x1)
 
         assert x0.shape == x1.shape
 
-        return x0, x1, mask, y, cond
+        return x0, x1, mask, cond
 
     def train(self, opt, train_dataset, val_dataset, corrupt_method):
         self.writer = util.build_log_writer(opt)
@@ -155,10 +153,10 @@ class Runner(object):
         optimizer, sched = build_optimizer_sched(opt, net, log)
 
         train_loader = util.setup_loader(train_dataset, opt.microbatch)
-        val_loader   = util.setup_loader(val_dataset,   opt.microbatch)
+        # val_loader   = util.setup_loader(val_dataset,   opt.microbatch)
 
-        self.accuracy = torchmetrics.Accuracy().to(opt.device)
-        self.resnet = build_resnet50().to(opt.device)
+        # self.accuracy = torchmetrics.Accuracy().to(opt.device)
+        # self.resnet = build_resnet50().to(opt.device)
 
         net.train()
         n_inner_loop = opt.batch_size // (opt.global_size * opt.microbatch)
@@ -167,7 +165,7 @@ class Runner(object):
 
             for _ in range(n_inner_loop):
                 # ===== sample boundary pair =====
-                x0, x1, mask, y, cond = self.sample_batch(opt, train_loader, corrupt_method)
+                x0, x1, mask, cond = self.sample_batch(opt, train_loader, corrupt_method)
 
                 # ===== compute loss =====
                 step = torch.randint(0, opt.interval, (x0.shape[0],))
@@ -211,10 +209,10 @@ class Runner(object):
                 if opt.distributed:
                     torch.distributed.barrier()
 
-            if it == 500 or it % 3000 == 0: # 0, 0.5k, 3k, 6k 9k
-                net.eval()
-                self.evaluation(opt, it, val_loader, corrupt_method)
-                net.train()
+            # if it == 500 or it % 3000 == 0: # 0, 0.5k, 3k, 6k 9k
+            #     net.eval()
+            #     self.evaluation(opt, it, val_loader, corrupt_method)
+            #     net.train()
         self.writer.close()
 
     @torch.no_grad()

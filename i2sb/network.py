@@ -22,7 +22,7 @@ from .ckpt_util import (
 from ipdb import set_trace as debug
 
 class Image256Net(torch.nn.Module):
-    def __init__(self, log, noise_levels, use_fp16=False, cond=False, pretrained_adm=True, ckpt_dir="data/"):
+    def __init__(self, log, noise_levels, use_fp16=False, cond=False, pretrained_adm=False, ckpt_dir="data/"):
         super(Image256Net, self).__init__()
 
         # initialize model
@@ -30,6 +30,8 @@ class Image256Net(torch.nn.Module):
         with open(ckpt_pkl, "rb") as f:
             kwargs = pickle.load(f)
         kwargs["use_fp16"] = use_fp16
+        kwargs["image_size"] = 512
+        kwargs["in_channels"] = 2       
         self.diffusion_model = create_model(**kwargs)
         log.info(f"[Net] Initialized network from {ckpt_pkl=}! Size={util.count_parameters(self.diffusion_model)}!")
 

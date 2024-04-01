@@ -116,19 +116,21 @@ def compute_batch(ckpt_opt, corrupt_type, corrupt_method, out):
         corrupt_img = clean_img * (1. - mask) + mask
         x1          = clean_img * (1. - mask) + mask * torch.randn_like(clean_img)
     elif corrupt_type == "mixture":
-        clean_img, corrupt_img, y = out
-        mask = None
+        clean_img, corrupt_img, mask = out
+        corrupt_img = corrupt_img.detach().to(opt.device)
+        mask  = mask.detach().to(opt.device)
+        x1 = clean_img.detach().to(opt.device)
     else:
         clean_img, y = out
         mask = None
         corrupt_img = corrupt_method(clean_img.to(opt.device))
         x1 = corrupt_img.to(opt.device)
 
-    cond = x1.detach() if ckpt_opt.cond_x1 else None
+    cond = x1.detach().to(opt.device) if ckpt_opt.cond_x1 else None
     if ckpt_opt.add_x1_noise: # only for decolor
         x1 = x1 + torch.randn_like(x1)
 
-    return corrupt_img, x1, mask, cond, y
+    return corrupt_img, x1, mask, cond
 
 @torch.no_grad()
 def main(opt):
@@ -170,7 +172,7 @@ def main(opt):
     num = 0
     for loader_itr, out in enumerate(val_loader):
 
-        corrupt_img, x1, mask, cond, y = compute_batch(ckpt_opt, corrupt_type, corrupt_method, out)
+        corrupt_img, x1, mask, cond = compute_batch(ckpt_opt, corrupt_type, corrupt_method, out)
 
         xs, _ = runner.ddpm_sampling(
             ckpt_opt, x1, mask=mask, cond=cond, clip_denoise=opt.clip_denoise, nfe=nfe, verbose=opt.n_gpu_per_node==1
