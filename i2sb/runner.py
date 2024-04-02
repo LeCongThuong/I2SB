@@ -235,7 +235,7 @@ class Runner(object):
         if cond is not None: cond = cond.to(opt.device)
         if mask is not None:
             mask = mask.to(opt.device)
-            x1 = (1. - mask) * x1 + mask * torch.randn_like(x1)
+            # x1 = (1. - mask) * x1 + mask * torch.randn_like(x1)
 
         with self.ema.average_parameters():
             self.net.eval()

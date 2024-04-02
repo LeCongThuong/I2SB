@@ -27,7 +27,7 @@ from i2sb import Runner, download_ckpt
 from corruption import build_corruption
 from dataset import imagenet
 from i2sb import ckpt_util
-
+from dataset.woodblock import WoodblockDataset
 import colored_traceback.always
 from ipdb import set_trace as debug
 
@@ -118,7 +118,7 @@ def compute_batch(ckpt_opt, corrupt_type, corrupt_method, out):
     elif corrupt_type == "mixture":
         clean_img, corrupt_img, mask = out
         corrupt_img = corrupt_img.detach().to(opt.device)
-        mask  = mask.detach().to(opt.device)
+        mask  = None
         x1 = clean_img.detach().to(opt.device)
     else:
         clean_img, y = out
@@ -130,7 +130,7 @@ def compute_batch(ckpt_opt, corrupt_type, corrupt_method, out):
     if ckpt_opt.add_x1_noise: # only for decolor
         x1 = x1 + torch.randn_like(x1)
 
-    return corrupt_img, x1, mask, cond
+    return x1, corrupt_img, mask, cond
 
 @torch.no_grad()
 def main(opt):
@@ -145,13 +145,13 @@ def main(opt):
     corrupt_method = build_corruption(opt, log, corrupt_type=corrupt_type)
 
     # build imagenet val dataset
-    val_dataset = build_val_dataset(opt, log, corrupt_type)
+    val_dataset   = WoodblockDataset(opt, log, train=False)
     n_samples = len(val_dataset)
 
     # build dataset per gpu and loader
-    subset_dataset = build_subset_per_gpu(opt, val_dataset, log)
-    val_loader = DataLoader(subset_dataset,
-        batch_size=opt.batch_size, shuffle=False, pin_memory=True, num_workers=1, drop_last=False,
+    # subset_dataset = build_subset_per_gpu(opt, val_dataset, log)
+    val_loader = DataLoader(val_dataset,
+        batch_size=opt.batch_size, shuffle=False, pin_memory=True, num_workers=10, drop_last=False,
     )
 
     # build runner
@@ -172,10 +172,10 @@ def main(opt):
     num = 0
     for loader_itr, out in enumerate(val_loader):
 
-        corrupt_img, x1, mask, cond = compute_batch(ckpt_opt, corrupt_type, corrupt_method, out)
+        clean_img, corrupt_img, mask, cond = compute_batch(ckpt_opt, corrupt_type, corrupt_method, out)
 
         xs, _ = runner.ddpm_sampling(
-            ckpt_opt, x1, mask=mask, cond=cond, clip_denoise=opt.clip_denoise, nfe=nfe, verbose=opt.n_gpu_per_node==1
+            ckpt_opt, corrupt_img, mask=mask, cond=cond, clip_denoise=opt.clip_denoise, nfe=nfe, verbose=opt.n_gpu_per_node==1
         )
         recon_img = xs[:, 0, ...].to(opt.device)
 
@@ -183,8 +183,9 @@ def main(opt):
 
         if loader_itr == 0 and opt.global_rank == 0: # debug
             os.makedirs(".debug", exist_ok=True)
-            tu.save_image((corrupt_img+1)/2, ".debug/corrupt.png")
+            tu.save_image((clean_img+1)/2, ".debug/clean.png")
             tu.save_image((recon_img+1)/2, ".debug/recon.png")
+            tu.save_image((corrupt_img+1)/2, ".debug/corrupt.png")
             log.info("Saved debug images!")
 
         # [-1,1]
