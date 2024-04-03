@@ -145,7 +145,7 @@ def main(opt):
     corrupt_method = build_corruption(opt, log, corrupt_type=corrupt_type)
 
     # build imagenet val dataset
-    val_dataset   = WoodblockDataset(opt, log, train=False)
+    val_dataset  = WoodblockDataset(opt, log, train=False)
     n_samples = len(val_dataset)
 
     # build dataset per gpu and loader
@@ -184,6 +184,7 @@ def main(opt):
         if loader_itr == 0 and opt.global_rank == 0: # debug
             os.makedirs(".debug", exist_ok=True)
             tu.save_image((clean_img+1)/2, ".debug/clean.png")
+            
             tu.save_image((recon_img+1)/2, ".debug/recon.png")
             tu.save_image((corrupt_img+1)/2, ".debug/corrupt.png")
             log.info("Saved debug images!")
@@ -191,10 +192,6 @@ def main(opt):
         # [-1,1]
         gathered_recon_img = collect_all_subset(recon_img, log)
         recon_imgs.append(gathered_recon_img)
-
-        y = y.to(opt.device)
-        gathered_y = collect_all_subset(y, log)
-        ys.append(gathered_y)
 
         num += len(gathered_recon_img)
         log.info(f"Collected {num} recon images!")
@@ -222,7 +219,7 @@ if __name__ == '__main__':
     parser.add_argument("--num-proc-node",  type=int,  default=1,           help="The number of nodes in multi node env")
 
     # data
-    parser.add_argument("--image-size",     type=int,  default=256)
+    parser.add_argument("--image-size",     type=int,  default=512)
     parser.add_argument("--dataset-dir",    type=Path, default="/dataset",  help="path to LMDB dataset")
     parser.add_argument("--partition",      type=str,  default=None,        help="e.g., '0_4' means the first 25% of the dataset")
 

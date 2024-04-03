@@ -178,4 +178,4 @@ if __name__ == '__main__':
         init_processes(0, opt.n_gpu_per_node, main, opt)
 
 
-# python train.py --name test_i2sb --n-gpu-per-node 1 --corrupt "mixture" --dataset-dir "/mnt/hmi/thuong/wb_train_val_test_dataset/" --batch-size 16 --microbatch 1 --log-dir "logs" --log_writer "tensorboard" 
+# python train.py --name test_i2sb --n-gpu-per-node 1 --corrupt "mixture" --dataset-dir "/mnt/hmi/thuong/wb_train_val_test_dataset/" --batch-size 16 --microbatch 1 --log-dir "logs" --log-writer "tensorboard" 
