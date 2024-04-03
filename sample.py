@@ -20,6 +20,8 @@ from torch.multiprocessing import Process
 from torch.utils.data import DataLoader, Subset
 from torch_ema import ExponentialMovingAverage
 import torchvision.utils as tu
+import torchvision.transforms as transforms
+from PIL import Image
 
 from logger import Logger
 import distributed_util as dist_util
@@ -145,7 +147,7 @@ def main(opt):
     corrupt_method = build_corruption(opt, log, corrupt_type=corrupt_type)
 
     # build imagenet val dataset
-    val_dataset  = WoodblockDataset(opt, log, train=False)
+    val_dataset  = WoodblockDataset(opt, log, train=False, subset=1)
     n_samples = len(val_dataset)
 
     # build dataset per gpu and loader
@@ -200,14 +202,28 @@ def main(opt):
     del runner
 
     arr = torch.cat(recon_imgs, axis=0)[:n_samples]
-    label_arr = torch.cat(ys, axis=0)[:n_samples]
+    # # label_arr = torch.cat(ys, axis=0)[:n_samples]
 
-    if opt.global_rank == 0:
-        torch.save({"arr": arr, "label_arr": label_arr}, recon_imgs_fn)
-        log.info(f"Save at {recon_imgs_fn}")
+    # if opt.global_rank == 0:
+    #     torch.save({"arr": arr}, recon_imgs_fn)
+    #     log.info(f"Save at {recon_imgs_fn}")
+
+
+    # Assuming arr is your tensor with shape [N, C, H, W]
+    for i in range(n_samples):
+        # Convert the tensor to [0, 255] range and to PIL Image
+        img = arr[i].squeeze()
+        img = (img+1)/2 # This selects the i-th image in the batch
+        img = img.mul(255).byte()  # Assuming your images are in [0, 1] range
+        img = img.cpu().numpy()  # Convert to numpy array
+
+        img = Image.fromarray(img)  # Convert to PIL Image, adjust for [H, W, C] format
+        # Save the image
+        img.save(f"{str(Path(recon_imgs_fn).parent)}/image_{i}.png")
+
     dist.barrier()
 
-    log.info(f"Sampling complete! Collect recon_imgs={arr.shape}, ys={label_arr.shape}")
+    log.info(f"Sampling complete! Collect recon_imgs={arr.shape}")
 
 
 if __name__ == '__main__':

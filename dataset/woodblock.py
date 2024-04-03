@@ -17,7 +17,8 @@ class WoodblockDataset(Dataset):
         self,
         opt,
         log,
-        train
+        train,
+        subset=-1
     ):
         super().__init__()
         self.dataset_dir = Path(opt.dataset_dir) / ('train' if train else 'valid')
@@ -25,7 +26,11 @@ class WoodblockDataset(Dataset):
         self.depth_dir = self.dataset_dir / 'np_depth_512'
 
         self.print_img_path_list = list(Path(self.print_dir).glob("*.png"))
-        self.depth_img_path_list = [Path(os.path.join(self.depth_dir, print_img_path.stem + ".npy")) for print_img_path in self.print_img_path_list]        
+        self.depth_img_path_list = [Path(os.path.join(self.depth_dir, print_img_path.stem + ".npy")) for print_img_path in self.print_img_path_list]
+        
+        if subset != -1:
+            self.print_img_path_list = self.print_img_path_list[:subset]
+            self.depth_img_path_list = self.depth_img_path_list[:subset]
         
         self.transform = T.Compose([
             T.ToTensor(),
