@@ -99,17 +99,20 @@ class Runner(object):
 
         self.log = log
 
-    def compute_label(self, step, x0, xt):
+    def compute_label(self, step, x0, xt, mask=None):
         """ Eq 12 """
         std_fwd = self.diffusion.get_std_fwd(step, xdim=x0.shape[1:])
         label = (xt - x0) / std_fwd
+        label = np.where(mask, label, torch.ones_like(label))
         return label.detach()
 
-    def compute_pred_x0(self, step, xt, net_out, clip_denoise=False):
+    def compute_pred_x0(self, step, xt, net_out, clip_denoise=False, mask=None):
         """ Given network output, recover x0. This should be the inverse of Eq 12 """
         std_fwd = self.diffusion.get_std_fwd(step, xdim=xt.shape[1:])
         pred_x0 = xt - std_fwd * net_out
         if clip_denoise: pred_x0.clamp_(-1., 1.)
+        if mask is not None:
+            pred_x0 = torch.where(mask, pred_x0, torch.ones_like(pred_x0))
         return pred_x0
 
     def sample_batch(self, opt, loader, corrupt_method):
@@ -135,10 +138,11 @@ class Runner(object):
         x0 = clean_img.detach().to(opt.device)
         x1 = corrupt_img.detach().to(opt.device)
         
-        cond = x1.detach().to(opt.device) if opt.cond_x1 else None
+        cond = x1.detach().to(opt.device)
 
-        if opt.add_x1_noise: # only for decolor
-            x1 = x1 + torch.randn_like(x1)
+        # if mask is not None:
+        #     mask = mask.detach().to(opt.device)
+        #     x1 = (1. - mask) * x1 + mask * torch.randn_like(x1)
 
         assert x0.shape == x1.shape
 
@@ -166,8 +170,6 @@ class Runner(object):
             for _ in range(n_inner_loop):
                 # ===== sample boundary pair =====
                 x0, x1, mask, cond = self.sample_batch(opt, train_loader, corrupt_method)
-                mask = None
-
                 # ===== compute loss =====
                 step = torch.randint(0, opt.interval, (x0.shape[0],))
 
@@ -241,10 +243,10 @@ class Runner(object):
         with self.ema.average_parameters():
             self.net.eval()
 
-            def pred_x0_fn(xt, step):
+            def pred_x0_fn(xt, step, mask=None):
                 step = torch.full((xt.shape[0],), step, device=opt.device, dtype=torch.long)
                 out = self.net(xt, step, cond=cond)
-                return self.compute_pred_x0(step, xt, out, clip_denoise=clip_denoise)
+                return self.compute_pred_x0(step, xt, out, clip_denoise=clip_denoise, mask=mask)
 
             xs, pred_x0 = self.diffusion.ddpm_sampling(
                 steps, pred_x0_fn, x1, mask=mask, ot_ode=opt.ot_ode, log_steps=log_steps, verbose=verbose,
@@ -283,12 +285,12 @@ class Runner(object):
         log.info(f"Generated recon trajectories: size={xs.shape}")
 
         def log_image(tag, img, nrow=10):
-            self.writer.add_image(it, tag, tu.make_grid((img+1)/2, nrow=nrow)) # [1,1] -> [0,1]
+            self.writer.add_image(it, tag, tu.make_grid((img+1)/2, nrow=nrow)) # [-1,1] -> [0,1]
 
-        def log_accuracy(tag, img):
-            pred = self.resnet(img.to(opt.device)) # input range [-1,1]
-            accu = self.accuracy(pred, y.to(opt.device))
-            self.writer.add_scalar(it, tag, accu)
+        # def log_accuracy(tag, img):
+        #     pred = self.resnet(img.to(opt.device)) # input range [-1,1]
+        #     accu = self.accuracy(pred, y.to(opt.device))
+        #     self.writer.add_scalar(it, tag, accu)
 
         log.info("Logging images ...")
         img_recon = xs[:, 0, ...]

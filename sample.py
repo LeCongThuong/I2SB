@@ -113,26 +113,17 @@ def get_recon_imgs_fn(opt, nfe):
     return recon_imgs_fn
 
 def compute_batch(ckpt_opt, corrupt_type, corrupt_method, out):
-    if "inpaint" in corrupt_type:
-        clean_img, y, mask = out
-        corrupt_img = clean_img * (1. - mask) + mask
-        x1          = clean_img * (1. - mask) + mask * torch.randn_like(clean_img)
-    elif corrupt_type == "mixture":
-        clean_img, corrupt_img, mask = out
-        corrupt_img = corrupt_img.detach().to(opt.device)
-        mask  = None
-        x1 = clean_img.detach().to(opt.device)
-    else:
-        clean_img, y = out
-        mask = None
-        corrupt_img = corrupt_method(clean_img.to(opt.device))
-        x1 = corrupt_img.to(opt.device)
 
-    cond = x1.detach().to(opt.device) if ckpt_opt.cond_x1 else None
+    clean_img, corrupt_img, mask = out
+    x1 = corrupt_img.detach().to(opt.device)
+    mask  = None
+    x0 = clean_img.detach().to(opt.device)
+
+    cond = x1.detach().to(opt.device)
     if ckpt_opt.add_x1_noise: # only for decolor
         x1 = x1 + torch.randn_like(x1)
 
-    return x1, corrupt_img, mask, cond
+    return x0, x1, mask, cond
 
 @torch.no_grad()
 def main(opt):
