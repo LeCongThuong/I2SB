@@ -162,10 +162,11 @@ class Runner(object):
         n_inner_loop = opt.batch_size // (opt.global_size * opt.microbatch)
         for it in range(opt.num_itr):
             optimizer.zero_grad()
-
+            loss = 0
             for _ in range(n_inner_loop):
                 # ===== sample boundary pair =====
                 x0, x1, mask, cond = self.sample_batch(opt, train_loader, corrupt_method)
+                mask = None
 
                 # ===== compute loss =====
                 step = torch.randint(0, opt.interval, (x0.shape[0],))
@@ -180,9 +181,9 @@ class Runner(object):
                     pred = mask * pred
                     label = mask * label
 
-                loss = F.mse_loss(pred, label)
-                loss.backward()
-
+                loss += F.mse_loss(pred, label)
+            loss = loss / n_inner_loop
+            loss.backward()
             optimizer.step()
             ema.update()
             if sched is not None: sched.step()
@@ -197,14 +198,14 @@ class Runner(object):
             if it % 10 == 0:
                 self.writer.add_scalar(it, 'loss', loss.detach())
 
-            if it % 2000 == 0:
+            if it % 500 == 0:
                 if opt.global_rank == 0:
                     torch.save({
                         "net": self.net.state_dict(),
                         "ema": ema.state_dict(),
                         "optimizer": optimizer.state_dict(),
                         "sched": sched.state_dict() if sched is not None else sched,
-                    }, opt.ckpt_path / "latest.pt")
+                    }, opt.ckpt_path / f"{str(it)}.pt")
                     log.info(f"Saved latest({it=}) checkpoint to {opt.ckpt_path=}!")
                 if opt.distributed:
                     torch.distributed.barrier()
