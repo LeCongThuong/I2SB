@@ -56,6 +56,7 @@ class WoodblockDataset(Dataset):
         """Utility function that load an image an convert to torch."""
         # open image using OpenCV (HxWxC)
         img: np.ndarray = np.load(depth_path)
+        img = np.asarray(img, dtype=np.float16)
         
         mask = img != img.max()
         mask = np.expand_dims(mask, axis=0)

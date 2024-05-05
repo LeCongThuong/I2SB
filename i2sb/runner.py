@@ -103,7 +103,7 @@ class Runner(object):
         """ Eq 12 """
         std_fwd = self.diffusion.get_std_fwd(step, xdim=x0.shape[1:])
         label = (xt - x0) / std_fwd
-        label = np.where(mask, label, torch.ones_like(label))
+        label = torch.where(mask, label, torch.ones_like(label))
         return label.detach()
 
     def compute_pred_x0(self, step, xt, net_out, clip_denoise=False, mask=None):
@@ -166,7 +166,9 @@ class Runner(object):
         n_inner_loop = opt.batch_size // (opt.global_size * opt.microbatch)
         for it in range(opt.num_itr):
             optimizer.zero_grad()
-            loss = 0
+
+            batch_loss = 0
+
             for _ in range(n_inner_loop):
                 # ===== sample boundary pair =====
                 x0, x1, mask, cond = self.sample_batch(opt, train_loader, corrupt_method)
@@ -174,7 +176,7 @@ class Runner(object):
                 step = torch.randint(0, opt.interval, (x0.shape[0],))
 
                 xt = self.diffusion.q_sample(step, x0, x1, ot_ode=opt.ot_ode)
-                label = self.compute_label(step, x0, xt)
+                label = self.compute_label(step, x0, xt, mask)
 
                 pred = net(xt, step, cond=cond)
                 assert xt.shape == label.shape == pred.shape
@@ -183,9 +185,10 @@ class Runner(object):
                     pred = mask * pred
                     label = mask * label
 
-                loss += F.mse_loss(pred, label)
-            loss = loss / n_inner_loop
-            loss.backward()
+                loss = F.mse_loss(pred, label)
+                loss.backward()
+                batch_loss = batch_loss + loss
+            loss = batch_loss / n_inner_loop
             optimizer.step()
             ema.update()
             if sched is not None: sched.step()
@@ -200,7 +203,7 @@ class Runner(object):
             if it % 10 == 0:
                 self.writer.add_scalar(it, 'loss', loss.detach())
 
-            if it % 500 == 0:
+            if it % 550 == 0:
                 if opt.global_rank == 0:
                     torch.save({
                         "net": self.net.state_dict(),
