@@ -103,7 +103,7 @@ class Runner(object):
         """ Eq 12 """
         std_fwd = self.diffusion.get_std_fwd(step, xdim=x0.shape[1:])
         label = (xt - x0) / std_fwd
-        label = torch.where(mask, label, torch.ones_like(label))
+        # label = torch.where(mask, label, torch.ones_like(label))
         return label.detach()
 
     def compute_pred_x0(self, step, xt, net_out, clip_denoise=False, mask=None):
@@ -111,41 +111,16 @@ class Runner(object):
         std_fwd = self.diffusion.get_std_fwd(step, xdim=xt.shape[1:])
         pred_x0 = xt - std_fwd * net_out
         if clip_denoise: pred_x0.clamp_(-1., 1.)
-        if mask is not None:
-            pred_x0 = torch.where(mask, pred_x0, torch.ones_like(pred_x0))
+        pred_x0 = torch.where(mask, pred_x0, torch.ones_like(pred_x0))
         return pred_x0
 
     def sample_batch(self, opt, loader, corrupt_method):
-        if opt.corrupt == "mixture":
-            clean_img, corrupt_img, mask = next(loader)
-            # mask = None
-        elif "inpaint" in opt.corrupt:
-            clean_img, y = next(loader)
-            with torch.no_grad():
-                corrupt_img, mask = corrupt_method(clean_img.to(opt.device))
-        else:
-            clean_img, y = next(loader)
-            with torch.no_grad():
-                corrupt_img = corrupt_method(clean_img.to(opt.device))
-            mask = None
-
-        # os.makedirs(".debug", exist_ok=True)
-        # tu.save_image((clean_img+1)/2, ".debug/clean.png", nrow=4)
-        # tu.save_image((corrupt_img+1)/2, ".debug/corrupt.png", nrow=4)
-        # debug()
-
+        clean_img, corrupt_img, mask = next(loader)
         mask  = mask.detach().to(opt.device)
         x0 = clean_img.detach().to(opt.device)
         x1 = corrupt_img.detach().to(opt.device)
         
         cond = x1.detach().to(opt.device)
-
-        # if mask is not None:
-        #     mask = mask.detach().to(opt.device)
-        #     x1 = (1. - mask) * x1 + mask * torch.randn_like(x1)
-
-        assert x0.shape == x1.shape
-
         return x0, x1, mask, cond
 
     def train(self, opt, train_dataset, val_dataset, corrupt_method):
@@ -269,7 +244,7 @@ class Runner(object):
         img_clean, img_corrupt, mask, y, cond = self.sample_batch(opt, val_loader, corrupt_method)
 
         x1 = img_corrupt.to(opt.device)
-
+        
         xs, pred_x0s = self.ddpm_sampling(
             opt, x1, mask=mask, cond=cond, clip_denoise=opt.clip_denoise, verbose=opt.global_rank==0
         )

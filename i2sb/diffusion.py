@@ -61,8 +61,8 @@ class Diffusion():
         xt = mu_x0 * x0 + mu_x1 * x1
         if not ot_ode:
             xt = xt + std_sb * torch.randn_like(xt)
-        if mask is not None:
-            xt = torch.where(mask, xt, torch.ones_like(xt))
+        # if mask is not None:
+        #     xt = torch.where(mask, xt, torch.ones_like(xt))
         return xt.detach()
 
     def p_posterior(self, nprev, n, x_n, x0, ot_ode=False, mask=None):
@@ -78,8 +78,6 @@ class Diffusion():
         xt_prev = mu_x0 * x0 + mu_xn * x_n
         if not ot_ode and nprev > 0:
             xt_prev = xt_prev + var.sqrt() * torch.randn_like(xt_prev)
-        if mask is not None:
-            xt_prev = torch.where(mask, xt_prev, torch.ones_like(xt_prev))
         return xt_prev
 
     def ddpm_sampling(self, steps, pred_x0_fn, x1, mask=None, ot_ode=False, log_steps=None, verbose=True):
@@ -97,18 +95,17 @@ class Diffusion():
         pair_steps = tqdm(pair_steps, desc='DDPM sampling', total=len(steps)-1) if verbose else pair_steps
         for prev_step, step in pair_steps:
             assert prev_step < step, f"{prev_step=}, {step=}"
-
             pred_x0 = pred_x0_fn(xt, step, mask)
             xt = self.p_posterior(prev_step, step, xt, pred_x0, ot_ode=ot_ode, mask=mask)
 
-            if mask is not None:
-                xt_true = x1
-                if not ot_ode:
-                    _prev_step = torch.full((xt.shape[0],), prev_step, device=self.device, dtype=torch.long)
-                    std_sb = unsqueeze_xdim(self.std_sb[_prev_step], xdim=x1.shape[1:])
-                    xt_true = xt_true + std_sb * torch.randn_like(xt_true)
-                 #(1. - mask) * xt_true + mask * xt
-                xt = np.where(mask, xt_true, torch.ones_like(xt_true))
+            # if mask is not None:
+            #     xt_true = x1
+            #     if not ot_ode:
+            #         _prev_step = torch.full((xt.shape[0],), prev_step, device=self.device, dtype=torch.long)
+            #         std_sb = unsqueeze_xdim(self.std_sb[_prev_step], xdim=x1.shape[1:])
+            #         xt_true = xt_true + std_sb * torch.randn_like(xt_true)
+            #      #(1. - mask) * xt_true + mask * xt
+            #     xt = np.where(mask, xt_true, torch.ones_like(xt_true))
 
             if prev_step in log_steps:
                 pred_x0s.append(pred_x0.detach().cpu())
