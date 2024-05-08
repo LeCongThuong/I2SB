@@ -101,14 +101,14 @@ class Diffusion():
             pred_x0 = pred_x0_fn(xt, step, mask)
             xt = self.p_posterior(prev_step, step, xt, pred_x0, ot_ode=ot_ode, mask=mask)
 
-            if mask is not None:
-                xt_true = x1
-                if not ot_ode:
-                    _prev_step = torch.full((xt.shape[0],), prev_step, device=self.device, dtype=torch.long)
-                    std_sb = unsqueeze_xdim(self.std_sb[_prev_step], xdim=x1.shape[1:])
-                    xt_true = xt_true + std_sb * torch.randn_like(xt_true)
-                 #(1. - mask) * xt_true + mask * xt
-                xt = np.where(mask, xt_true, torch.ones_like(xt_true))
+            # if mask is not None:
+            #     xt_true = x1
+            #     if not ot_ode:
+            #         _prev_step = torch.full((xt.shape[0],), prev_step, device=self.device, dtype=torch.long)
+            #         std_sb = unsqueeze_xdim(self.std_sb[_prev_step], xdim=x1.shape[1:])
+            #         xt_true = xt_true + std_sb * torch.randn_like(xt_true)
+            #      #(1. - mask) * xt_true + mask * xt
+            #     xt = np.where(mask, xt_true, torch.ones_like(xt_true))
 
             if prev_step in log_steps:
                 pred_x0s.append(pred_x0.detach().cpu())
