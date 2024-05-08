@@ -78,6 +78,8 @@ def create_training_options():
     parser.add_argument("--lr-step",        type=int,   default=1000,        help="learning rate decay step size")
     parser.add_argument("--l2-norm",        type=float, default=0.0)
     parser.add_argument("--ema",            type=float, default=0.99)
+    parser.add_argument("--feat_coeff",     type=float, default=1.0)
+    parser.add_argument("--pixel_coeff",    type=float, default=1.0)
 
     # --------------- path and logging ---------------
     parser.add_argument("--dataset-dir",    type=Path,  default="/dataset",  help="path to LMDB dataset")

@@ -24,6 +24,8 @@ from evaluation import build_resnet50
 from . import util
 from .network import Image256Net
 from .diffusion import Diffusion
+from i2sb.network import AuxLoss
+
 
 from ipdb import set_trace as debug
 
@@ -86,6 +88,7 @@ class Runner(object):
         noise_levels = torch.linspace(opt.t0, opt.T, opt.interval, device=opt.device) * opt.interval
         self.net = Image256Net(log, noise_levels=noise_levels, use_fp16=opt.use_fp16, cond=opt.cond_x1)
         self.ema = ExponentialMovingAverage(self.net.parameters(), decay=opt.ema)
+        self.aux_loss = AuxLoss(feat_coeff=opt.feat_coeff, pixel_coeff=opt.pixel_coeff)
 
         if opt.load:
             checkpoint = torch.load(opt.load, map_location="cpu")
@@ -179,13 +182,17 @@ class Runner(object):
                 label = self.compute_label(step, x0, xt, mask)
 
                 pred = net(xt, step, cond=cond)
+                
                 assert xt.shape == label.shape == pred.shape
-
                 if mask is not None:
-                    pred = mask * pred
+                    noise_pred = mask * pred[:, :1, :, :]
                     label = mask * label
+                img_reconst = torch.where(mask, pred[:, 1:, :, :], torch.ones_like(x0))
 
-                loss = F.mse_loss(pred, label)
+                aux_loss = self.aux_loss(img_reconst, x0)
+                noise_denoising_loss = F.mse_loss(noise_pred, label)
+                loss = noise_denoising_loss + aux_loss
+                
                 loss.backward()
                 batch_loss = batch_loss + loss
             loss = batch_loss / n_inner_loop
@@ -249,7 +256,7 @@ class Runner(object):
             def pred_x0_fn(xt, step, mask=None):
                 step = torch.full((xt.shape[0],), step, device=opt.device, dtype=torch.long)
                 out = self.net(xt, step, cond=cond)
-                return self.compute_pred_x0(step, xt, out, clip_denoise=clip_denoise, mask=mask)
+                return self.compute_pred_x0(step, xt, out[:, :1, :, :], clip_denoise=clip_denoise, mask=mask)
 
             xs, pred_x0 = self.diffusion.ddpm_sampling(
                 steps, pred_x0_fn, x1, mask=mask, ot_ode=opt.ot_ode, log_steps=log_steps, verbose=verbose,

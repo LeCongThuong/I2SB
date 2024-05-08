@@ -116,7 +116,6 @@ def compute_batch(ckpt_opt, corrupt_type, corrupt_method, out):
 
     clean_img, corrupt_img, mask = out
     x1 = corrupt_img.detach().to(opt.device)
-    mask  = None
     x0 = clean_img.detach().to(opt.device)
 
     cond = x1.detach().to(opt.device)
@@ -138,7 +137,7 @@ def main(opt):
     corrupt_method = build_corruption(opt, log, corrupt_type=corrupt_type)
 
     # build imagenet val dataset
-    val_dataset  = WoodblockDataset(opt, log, train=False, subset=1)
+    val_dataset  = WoodblockDataset(opt, log, train=False, subset=5)
     n_samples = len(val_dataset)
 
     # build dataset per gpu and loader
@@ -166,7 +165,6 @@ def main(opt):
     for loader_itr, out in enumerate(val_loader):
 
         clean_img, corrupt_img, mask, cond = compute_batch(ckpt_opt, corrupt_type, corrupt_method, out)
-
         xs, _ = runner.ddpm_sampling(
             ckpt_opt, corrupt_img, mask=mask, cond=cond, clip_denoise=opt.clip_denoise, nfe=nfe, verbose=opt.n_gpu_per_node==1
         )
