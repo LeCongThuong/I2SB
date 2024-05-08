@@ -61,8 +61,8 @@ class Diffusion():
         xt = mu_x0 * x0 + mu_x1 * x1
         if not ot_ode:
             xt = xt + std_sb * torch.randn_like(xt)
-        if mask is not None:
-            xt = torch.where(mask, xt, torch.ones_like(xt))
+        # if mask is not None:
+        #     xt = torch.where(mask, xt, torch.ones_like(xt))
         return xt.detach()
 
     def p_posterior(self, nprev, n, x_n, x0, ot_ode=False, mask=None):
@@ -78,8 +78,8 @@ class Diffusion():
         xt_prev = mu_x0 * x0 + mu_xn * x_n
         if not ot_ode and nprev > 0:
             xt_prev = xt_prev + var.sqrt() * torch.randn_like(xt_prev)
-        if mask is not None:
-            xt_prev = torch.where(mask, xt_prev, torch.ones_like(xt_prev))
+        # if mask is not None:
+        #     xt_prev = torch.where(mask, xt_prev, torch.ones_like(xt_prev))
         return xt_prev
 
     def ddpm_sampling(self, steps, pred_x0_fn, x1, mask=None, ot_ode=False, log_steps=None, verbose=True):

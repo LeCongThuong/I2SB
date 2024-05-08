@@ -106,7 +106,7 @@ class Runner(object):
         """ Eq 12 """
         std_fwd = self.diffusion.get_std_fwd(step, xdim=x0.shape[1:])
         label = (xt - x0) / std_fwd
-        label = torch.where(mask, label, torch.ones_like(label))
+        # label = torch.where(mask, label, torch.ones_like(label))
         return label.detach()
 
     def compute_pred_x0(self, step, xt, net_out, clip_denoise=False, mask=None):
@@ -192,7 +192,7 @@ class Runner(object):
                 aux_loss = self.aux_loss(img_reconst, x0)
                 noise_denoising_loss = F.mse_loss(noise_pred, label)
                 loss = noise_denoising_loss + aux_loss
-                
+
                 loss.backward()
                 batch_loss = batch_loss + loss
             loss = batch_loss / n_inner_loop
