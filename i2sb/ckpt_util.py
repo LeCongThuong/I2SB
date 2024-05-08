@@ -190,5 +190,5 @@ def build_ckpt_option(opt, log, ckpt_path):
         assert hasattr(opt, k)
         setattr(ckpt_opt, k, getattr(opt, k))
 
-    ckpt_opt.load = ckpt_path / "4400.pt"
+    ckpt_opt.load = ckpt_path / "4950.pt"
     return ckpt_opt

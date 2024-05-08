@@ -27,7 +27,8 @@ class WoodblockDataset(Dataset):
 
         self.print_img_path_list = list(Path(self.print_dir).glob("*.png"))
         self.depth_img_path_list = [Path(os.path.join(self.depth_dir, print_img_path.stem + ".npy")) for print_img_path in self.print_img_path_list]
-        
+        print("Number of image: ", len(self.print_img_path_list))
+
         if subset != -1:
             self.print_img_path_list = self.print_img_path_list[:subset]
             self.depth_img_path_list = self.depth_img_path_list[:subset]
@@ -71,7 +72,13 @@ class WoodblockDataset(Dataset):
 
         t_print = self.preprocess_image(print_path)
         t_depth, mask = self.preprocess_depth(depth_path)
-        
+
+        input_data = {
+            "print": t_print,
+            "depth": t_depth,
+            "mask": mask,
+            "img_name": Path(print_path).stem
+        }
         # mask = t_depth != torch.max(t_depth)
 
-        return t_depth, t_print, mask
+        return input_data #t_depth, t_print, mask

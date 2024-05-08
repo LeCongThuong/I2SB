@@ -227,7 +227,7 @@ class Runner(object):
                 return self.compute_pred_x0(step, xt, out, clip_denoise=clip_denoise, mask=mask)
 
             xs, pred_x0 = self.diffusion.ddpm_sampling(
-                steps, pred_x0_fn, x1, mask=mask, ot_ode=opt.ot_ode, log_steps=log_steps, verbose=verbose,
+                steps, pred_x0_fn, x1, mask=mask, ot_ode=True, log_steps=log_steps, verbose=verbose,
             )
 
         b, *xdim = x1.shape
