@@ -68,10 +68,13 @@ class AuxLoss(nn.Module):
         self.pixel_coeff = pixel_coeff
 
     def forward(self, output, target):
+        target = target.float()
+        # target = target.astype(output.dtype)
         output = (output + 1) / 2.0
         target = (target + 1) / 2.0
         pixel_loss = F.mse_loss(output, target)
         output= output.repeat_interleave(3, dim=1)
         target = target.repeat_interleave(3, dim=1)
         feat_loss = self.feat_loss_fn(output, target)
+        # print(pixel_loss, feat_loss)
         return self.pixel_coeff * pixel_loss + self.feat_coeff * feat_loss

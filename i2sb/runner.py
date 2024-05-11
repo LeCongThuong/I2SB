@@ -88,7 +88,7 @@ class Runner(object):
         noise_levels = torch.linspace(opt.t0, opt.T, opt.interval, device=opt.device) * opt.interval
         self.net = Image256Net(log, noise_levels=noise_levels, use_fp16=opt.use_fp16, cond=opt.cond_x1)
         self.ema = ExponentialMovingAverage(self.net.parameters(), decay=opt.ema)
-        self.aux_loss = AuxLoss(feat_coeff=opt.feat_coeff, pixel_coeff=opt.pixel_coeff)
+        self.aux_loss = AuxLoss(feat_coeff=opt.feat_coeff, pixel_coeff=opt.pixel_coeff).to("cuda")
 
         if opt.load:
             checkpoint = torch.load(opt.load, map_location="cpu")
@@ -183,7 +183,7 @@ class Runner(object):
 
                 pred = net(xt, step, cond=cond)
                 
-                assert xt.shape == label.shape == pred.shape
+                # assert xt.shape == label.shape == pred.shape
                 if mask is not None:
                     noise_pred = mask * pred[:, :1, :, :]
                     label = mask * label

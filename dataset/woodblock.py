@@ -21,7 +21,7 @@ class WoodblockDataset(Dataset):
         subset=-1
     ):
         super().__init__()
-        self.dataset_dir = Path(opt.dataset_dir) / ('train' if train else 'valid')
+        self.dataset_dir = Path(opt.dataset_dir) / ('train' if train else 'subtest')
         self.print_dir = self.dataset_dir / 'print_512'
         self.depth_dir = self.dataset_dir / 'np_depth_512'
 
