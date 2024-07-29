@@ -24,6 +24,7 @@ from evaluation import build_resnet50
 from . import util
 from .network import Image256Net
 from .diffusion import Diffusion
+from .util import AverageMeter
 
 from ipdb import set_trace as debug
 
@@ -139,6 +140,8 @@ class Runner(object):
 
         net.train()
         n_inner_loop = opt.batch_size // (opt.global_size * opt.microbatch)
+        total_loss = AverageMeter("total_loss")
+
         for it in range(opt.num_itr):
             optimizer.zero_grad()
 
@@ -166,6 +169,7 @@ class Runner(object):
             loss = batch_loss / n_inner_loop
             optimizer.step()
             ema.update()
+            total_loss.update(loss.detach())
             if sched is not None: sched.step()
 
             # -------- logging --------
@@ -177,6 +181,7 @@ class Runner(object):
             ))
             if it % 10 == 0:
                 self.writer.add_scalar(it, 'loss', loss.detach())
+                self.writer.add_scalar(it, 'acc_loss', total_loss.avg)
 
             if it % 550 == 0:
                 if opt.global_rank == 0:
