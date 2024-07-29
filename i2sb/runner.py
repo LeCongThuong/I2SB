@@ -24,6 +24,9 @@ from evaluation import build_resnet50
 from . import util
 from .network import Image256Net
 from .diffusion import Diffusion
+from i2sb.network import AuxLoss
+from .util import AverageMeter
+
 
 from ipdb import set_trace as debug
 
@@ -86,6 +89,7 @@ class Runner(object):
         noise_levels = torch.linspace(opt.t0, opt.T, opt.interval, device=opt.device) * opt.interval
         self.net = Image256Net(log, noise_levels=noise_levels, use_fp16=opt.use_fp16, cond=opt.cond_x1)
         self.ema = ExponentialMovingAverage(self.net.parameters(), decay=opt.ema)
+        self.aux_loss = AuxLoss(feat_coeff=opt.feat_coeff).to("cuda")
 
         if opt.load:
             checkpoint = torch.load(opt.load, map_location="cpu")
@@ -139,10 +143,16 @@ class Runner(object):
 
         net.train()
         n_inner_loop = opt.batch_size // (opt.global_size * opt.microbatch)
+        total_loss = AverageMeter("total_loss")
+        total_perceptual_loss = AverageMeter("perceptual_loss")
+        total_denoised_loss = AverageMeter("denoised_loss")
+        
         for it in range(opt.num_itr):
             optimizer.zero_grad()
 
             batch_loss = 0
+            batch_perceptual_loss = 0
+            batch_denoised_loss = 0
 
             for _ in range(n_inner_loop):
                 # ===== sample boundary pair =====
@@ -160,12 +170,24 @@ class Runner(object):
                     pred = mask * pred
                     label = mask * label
 
-                loss = F.mse_loss(pred, label)
+                img_reconst = self.compute_pred_x0(self, step, xt, pred, clip_denoise=True, mask=mask)
+                perceptual_loss = self.aux_loss(img_reconst, x0)
+                noise_denoising_loss = F.mse_loss(pred, label)
+                loss = perceptual_loss + noise_denoising_loss
                 loss.backward()
                 batch_loss = batch_loss + loss
+                batch_perceptual_loss = batch_perceptual_loss + perceptual_loss.items()
+                batch_denoised_loss = batch_denoised_loss + noise_denoising_loss.items()
             loss = batch_loss / n_inner_loop
+            avg_perceptual_loss = batch_perceptual_loss / n_inner_loop
+            avg_denoised_loss = batch_denoised_loss / n_inner_loop
             optimizer.step()
             ema.update()
+
+            total_loss.update(loss.detach())
+            total_denoised_loss.update(avg_denoised_loss)
+            total_perceptual_loss.update(avg_perceptual_loss)
+
             if sched is not None: sched.step()
 
             # -------- logging --------
@@ -177,6 +199,12 @@ class Runner(object):
             ))
             if it % 10 == 0:
                 self.writer.add_scalar(it, 'loss', loss.detach())
+                self.writer.add_scalar(it, 'denoise_loss', avg_denoised_loss)
+                self.writer.add_scalar(it, 'perceptual_loss', avg_perceptual_loss)
+
+                self.writer.add_scalar(it, 'acc_loss', total_loss.avg)
+                self.writer.add_scalar(it, 'acc_denoise_loss', total_denoised_loss.avg)
+                self.writer.add_scalar(it, 'perceptual_loss', total_perceptual_loss.avg)
 
             if it % 550 == 0:
                 if opt.global_rank == 0:

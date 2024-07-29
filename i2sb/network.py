@@ -8,8 +8,9 @@
 import os
 import pickle
 import torch
-
+import torch.nn as nn
 from guided_diffusion.script_util import create_model
+from IQA_pytorch import LPIPSvgg
 
 from . import util
 from .ckpt_util import (
@@ -55,3 +56,20 @@ class Image256Net(torch.nn.Module):
 
         x = torch.cat([x, cond], dim=1) if self.cond else x
         return self.diffusion_model(x, t)
+    
+class AuxLoss(nn.Module):
+    def __init__(self, feat_coeff=1.0):
+        super(AuxLoss, self).__init__()
+        self.feat_loss_fn = LPIPSvgg()
+        self.feat_coeff = feat_coeff
+
+    def forward(self, output, target):
+        target = target.float()
+        # target = target.astype(output.dtype)
+        output = (output + 1) / 2.0
+        target = (target + 1) / 2.0
+        output= output.repeat_interleave(3, dim=1)
+        target = target.repeat_interleave(3, dim=1)
+        feat_loss = self.feat_loss_fn(output, target)
+        # print(pixel_loss, feat_loss)
+        return self.feat_coeff * feat_loss
