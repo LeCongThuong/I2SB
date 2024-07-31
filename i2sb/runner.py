@@ -170,14 +170,14 @@ class Runner(object):
                     pred = mask * pred
                     label = mask * label
 
-                img_reconst = self.compute_pred_x0(self, step, xt, pred, clip_denoise=True, mask=mask)
+                img_reconst = self.compute_pred_x0(step, xt, pred, clip_denoise=True, mask=mask)
                 perceptual_loss = self.aux_loss(img_reconst, x0)
                 noise_denoising_loss = F.mse_loss(pred, label)
                 loss = perceptual_loss + noise_denoising_loss
                 loss.backward()
                 batch_loss = batch_loss + loss
-                batch_perceptual_loss = batch_perceptual_loss + perceptual_loss.items()
-                batch_denoised_loss = batch_denoised_loss + noise_denoising_loss.items()
+                batch_perceptual_loss = batch_perceptual_loss + perceptual_loss
+                batch_denoised_loss = batch_denoised_loss + noise_denoising_loss
             loss = batch_loss / n_inner_loop
             avg_perceptual_loss = batch_perceptual_loss / n_inner_loop
             avg_denoised_loss = batch_denoised_loss / n_inner_loop
@@ -185,8 +185,8 @@ class Runner(object):
             ema.update()
 
             total_loss.update(loss.detach())
-            total_denoised_loss.update(avg_denoised_loss)
-            total_perceptual_loss.update(avg_perceptual_loss)
+            total_denoised_loss.update(avg_denoised_loss.detach())
+            total_perceptual_loss.update(avg_perceptual_loss.detach())
 
             if sched is not None: sched.step()
 
