@@ -72,7 +72,8 @@ def create_training_options():
     # --------------- optimizer and loss ---------------
     parser.add_argument("--batch-size",     type=int,   default=256)
     parser.add_argument("--microbatch",     type=int,   default=2,           help="accumulate gradient over microbatch until full batch-size")
-    parser.add_argument("--num-itr",        type=int,   default=5000,     help="training iteration")
+    parser.add_argument("--num-itr",        type=int,   default=50000,       help="training iteration")
+    parser.add_argument("--chkpt_interval", type=int,   default=3000,     help="distance between 2 checkpoints")
     parser.add_argument("--lr",             type=float, default=3e-4,        help="learning rate")
     parser.add_argument("--lr-gamma",       type=float, default=0.99,        help="learning rate decay ratio")
     parser.add_argument("--lr-step",        type=int,   default=1000,        help="learning rate decay step size")
@@ -105,7 +106,8 @@ def create_training_options():
     os.makedirs(opt.ckpt_path, exist_ok=True)
 
     if opt.ckpt is not None:
-        ckpt_file = RESULT_DIR / opt.ckpt / "latest.pt"
+        ckpt_file = opt.ckpt_path / opt.ckpt #/ "latest.pt"
+        print("in creating training: ", ckpt_file)
         assert ckpt_file.exists()
         opt.load = ckpt_file
     else:

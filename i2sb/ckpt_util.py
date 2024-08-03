@@ -177,7 +177,7 @@ def download_ckpt(ckpt_dir="data/"):
     download_adm_image256_uncond_ckpt(ckpt_dir=ckpt_dir)
     download_adm_image256_cond_ckpt(ckpt_dir=ckpt_dir)
 
-def build_ckpt_option(opt, log, ckpt_path):
+def build_ckpt_option(opt, log, ckpt_path, which_epoch='latest'):
     ckpt_path = Path(ckpt_path)
     opt_pkl_path = ckpt_path / "options.pkl"
     assert opt_pkl_path.exists()
@@ -190,5 +190,5 @@ def build_ckpt_option(opt, log, ckpt_path):
         assert hasattr(opt, k)
         setattr(ckpt_opt, k, getattr(opt, k))
 
-    ckpt_opt.load = ckpt_path / "4400.pt"
+    ckpt_opt.load = os.path.join(ckpt_path, which_epoch)
     return ckpt_opt

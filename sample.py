@@ -129,7 +129,7 @@ def main(opt):
     log = Logger(opt.global_rank, ".log")
 
     # get (default) ckpt option
-    ckpt_opt = ckpt_util.build_ckpt_option(opt, log, RESULT_DIR / opt.ckpt)
+    ckpt_opt = ckpt_util.build_ckpt_option(opt, log, os.path.join(RESULT_DIR, opt.ckpt),  opt.name)
     corrupt_type = ckpt_opt.corrupt
     nfe = opt.nfe or ckpt_opt.interval-1
 
@@ -230,7 +230,8 @@ if __name__ == '__main__':
 
     # sample
     parser.add_argument("--batch-size",     type=int,  default=32)
-    parser.add_argument("--ckpt",           type=str,  default=None,        help="the checkpoint name from which we wish to sample")
+    parser.add_argument("--ckpt",           type=str,  default=None,        help="the experiment name")
+    parser.add_argument("--name",           type=str,  default=None,        help="the checkpoint name from which we wish to sample")
     parser.add_argument("--nfe",            type=int,  default=None,        help="sampling steps")
     parser.add_argument("--clip-denoise",   action="store_true",            help="clamp predicted image to [-1,1] at each")
     parser.add_argument("--use-fp16",       action="store_true",            help="use fp16 network weight for faster sampling")
