@@ -142,7 +142,7 @@ class Runner(object):
         n_inner_loop = opt.batch_size // (opt.global_size * opt.microbatch)
         total_loss = AverageMeter("total_loss")
 
-        for it in range(opt.num_itr):
+        for it in range(47000, opt.num_itr, 1):
             optimizer.zero_grad()
 
             batch_loss = 0
