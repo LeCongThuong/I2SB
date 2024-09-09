@@ -172,19 +172,19 @@ class Runner(object):
 
                 img_reconst = self.compute_pred_x0(step, xt, pred, clip_denoise=True, mask=mask)
                 perceptual_loss = self.aux_loss(img_reconst, x0)
-                noise_denoising_loss = F.mse_loss(pred, label)
+                noise_denoising_loss = 7 * F.mse_loss(pred, label)
                 loss = perceptual_loss + noise_denoising_loss
                 loss.backward()
                 batch_loss = batch_loss + loss
                 batch_perceptual_loss = batch_perceptual_loss + perceptual_loss
                 batch_denoised_loss = batch_denoised_loss + noise_denoising_loss
-            loss = batch_loss / n_inner_loop
+            avg_loss = batch_loss / n_inner_loop
             avg_perceptual_loss = batch_perceptual_loss / n_inner_loop
             avg_denoised_loss = batch_denoised_loss / n_inner_loop
             optimizer.step()
             ema.update()
 
-            total_loss.update(loss.detach())
+            total_loss.update(avg_loss.detach())
             total_denoised_loss.update(avg_denoised_loss.detach())
             total_perceptual_loss.update(avg_perceptual_loss.detach())
 
@@ -198,15 +198,15 @@ class Runner(object):
                 "{:+.4f}".format(loss.item()),
             ))
             if it % 10 == 0:
-                self.writer.add_scalar(it, 'loss', loss.detach())
+                self.writer.add_scalar(it, 'loss', avg_loss.detach())
                 self.writer.add_scalar(it, 'denoise_loss', avg_denoised_loss)
                 self.writer.add_scalar(it, 'perceptual_loss', avg_perceptual_loss)
 
                 self.writer.add_scalar(it, 'acc_loss', total_loss.avg)
                 self.writer.add_scalar(it, 'acc_denoise_loss', total_denoised_loss.avg)
-                self.writer.add_scalar(it, 'perceptual_loss', total_perceptual_loss.avg)
+                self.writer.add_scalar(it, 'acc_perceptual_loss', total_perceptual_loss.avg)
 
-            if it % 550 == 0:
+            if it % opt.chkpt_interval == 0:
                 if opt.global_rank == 0:
                     torch.save({
                         "net": self.net.state_dict(),

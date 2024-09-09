@@ -79,7 +79,8 @@ def create_training_options():
     parser.add_argument("--l2-norm",        type=float, default=0.0)
     parser.add_argument("--ema",            type=float, default=0.99)
     parser.add_argument("--feat_coeff",     type=float, default=5.0)
-
+    parser.add_argument("--chkpt_interval", type=int,   default=5000,     help="distance between 2 checkpoints")
+    
     # --------------- path and logging ---------------
     parser.add_argument("--dataset-dir",    type=Path,  default="/dataset",  help="path to LMDB dataset")
     parser.add_argument("--log-dir",        type=Path,  default=".log",      help="path to log std outputs and writer data")
@@ -106,7 +107,8 @@ def create_training_options():
     os.makedirs(opt.ckpt_path, exist_ok=True)
 
     if opt.ckpt is not None:
-        ckpt_file = RESULT_DIR / opt.ckpt / "latest.pt"
+        ckpt_file = opt.ckpt_path / opt.ckpt #/ "latest.pt"
+        print("in creating training: ", ckpt_file)
         assert ckpt_file.exists()
         opt.load = ckpt_file
     else:
