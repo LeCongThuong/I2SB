@@ -89,7 +89,7 @@ class Runner(object):
         noise_levels = torch.linspace(opt.t0, opt.T, opt.interval, device=opt.device) * opt.interval
         self.net = Image256Net(log, noise_levels=noise_levels, use_fp16=opt.use_fp16, cond=opt.cond_x1)
         self.ema = ExponentialMovingAverage(self.net.parameters(), decay=opt.ema)
-        self.aux_loss = AuxLoss(feat_coeff=opt.feat_coeff).to("cuda")
+        self.aux_loss = AuxLoss(feat_coeff=opt.feat_coeff, loss_type=opt.loss_type).to("cuda")
 
         if opt.load:
             checkpoint = torch.load(opt.load, map_location="cpu")
@@ -147,7 +147,7 @@ class Runner(object):
         total_perceptual_loss = AverageMeter("perceptual_loss")
         total_denoised_loss = AverageMeter("denoised_loss")
         
-        for it in range(opt.num_itr):
+        for it in np.arange(55000, opt.num_itr, 1):
             optimizer.zero_grad()
 
             batch_loss = 0
@@ -172,8 +172,8 @@ class Runner(object):
 
                 img_reconst = self.compute_pred_x0(step, xt, pred, clip_denoise=True, mask=mask)
                 perceptual_loss = self.aux_loss(img_reconst, x0)
-                noise_denoising_loss = 7 * F.mse_loss(pred, label)
-                loss = perceptual_loss + noise_denoising_loss
+                noise_denoising_loss = F.mse_loss(pred, label)
+                loss = perceptual_loss + 7 * noise_denoising_loss
                 loss.backward()
                 batch_loss = batch_loss + loss
                 batch_perceptual_loss = batch_perceptual_loss + perceptual_loss

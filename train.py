@@ -78,8 +78,9 @@ def create_training_options():
     parser.add_argument("--lr-step",        type=int,   default=1000,        help="learning rate decay step size")
     parser.add_argument("--l2-norm",        type=float, default=0.0)
     parser.add_argument("--ema",            type=float, default=0.99)
-    parser.add_argument("--feat_coeff",     type=float, default=5.0)
+    parser.add_argument("--feat_coeff",     type=float, default=1.0)
     parser.add_argument("--chkpt_interval", type=int,   default=5000,     help="distance between 2 checkpoints")
+    parser.add_argument("--loss_type",      type=str,   default="lpips",     help="loss type for auxiliary loss")
     
     # --------------- path and logging ---------------
     parser.add_argument("--dataset-dir",    type=Path,  default="/dataset",  help="path to LMDB dataset")

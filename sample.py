@@ -129,7 +129,7 @@ def main(opt):
     log = Logger(opt.global_rank, ".log")
 
     # get (default) ckpt option
-    ckpt_opt = ckpt_util.build_ckpt_option(opt, log, RESULT_DIR / opt.ckpt)
+    ckpt_opt = ckpt_util.build_ckpt_option(opt, log, RESULT_DIR / opt.ckpt, opt.name)
     corrupt_type = ckpt_opt.corrupt
     nfe = opt.nfe or ckpt_opt.interval-1
 
@@ -137,7 +137,7 @@ def main(opt):
     corrupt_method = build_corruption(opt, log, corrupt_type=corrupt_type)
 
     # build imagenet val dataset
-    val_dataset  = WoodblockDataset(opt, log, train=False, subset=5)
+    val_dataset  = WoodblockDataset(opt, log, train=False, subset=opt.subset)
     n_samples = len(val_dataset)
 
     # build dataset per gpu and loader
@@ -234,6 +234,10 @@ if __name__ == '__main__':
     parser.add_argument("--nfe",            type=int,  default=None,        help="sampling steps")
     parser.add_argument("--clip-denoise",   action="store_true",            help="clamp predicted image to [-1,1] at each")
     parser.add_argument("--use-fp16",       action="store_true",            help="use fp16 network weight for faster sampling")
+    parser.add_argument("--name",       type=int,  default=80000, help="name of checkpoint")
+    parser.add_argument("--subset",       type=int,  default=-1, help="")
+    parser.add_argument("--feat_coeff",     type=float, default=1.0)
+    parser.add_argument("--loss_type",      type=str,   default="lpips",     help="loss type for auxiliary loss")
 
     arg = parser.parse_args()
 

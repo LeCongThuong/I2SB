@@ -10,7 +10,7 @@ import pickle
 import torch
 import torch.nn as nn
 from guided_diffusion.script_util import create_model
-from IQA_pytorch import LPIPSvgg
+from IQA_pytorch import LPIPSvgg, DISTS
 
 from . import util
 from .ckpt_util import (
@@ -58,9 +58,19 @@ class Image256Net(torch.nn.Module):
         return self.diffusion_model(x, t)
     
 class AuxLoss(nn.Module):
-    def __init__(self, feat_coeff=1.0):
+    def __init__(self, feat_coeff=1.0, loss_type='lpips'):
         super(AuxLoss, self).__init__()
-        self.feat_loss_fn = LPIPSvgg()
+        if loss_type == 'lpips':
+            self.feat_loss_fn = LPIPSvgg()
+        elif loss_type == 'dists':
+            self.feat_loss_fn = DISTS()
+        elif loss_type == 'dreamsim':
+            import sys
+            import torch
+            from dreamsim import dreamsim
+
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.feat_loss_fn, _ = dreamsim(pretrained=True)
         self.feat_coeff = feat_coeff
 
     def forward(self, output, target):
